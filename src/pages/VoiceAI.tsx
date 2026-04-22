@@ -148,7 +148,8 @@ export default function VoiceAI({ apiFetch, companyId }: { apiFetch: any, compan
     try {
       const formData = new FormData();
       formData.append('audio', blob, 'recording.webm');
-      const res = await fetch('/api/ai/transcribe', {
+      const API_BASE = import.meta.env.VITE_API_URL || '';
+      const res = await fetch(`${API_BASE}/api/ai/transcribe`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
         body: formData

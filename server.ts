@@ -200,9 +200,20 @@ let trainingLogsInMemory: any[] = [];
 
 async function startServer() {
   const server = http.createServer(app);
-  const io = new Server(server, { cors: { origin: "*" } });
+  const io = new Server(server, { 
+    cors: { 
+      origin: "*",
+      methods: ["GET", "POST"],
+      credentials: true
+    },
+    allowEIO3: true // Compatibilidad mejorada para móviles
+  });
 
-  app.use(cors());
+  // Configuración de Seguridad para Producción (Netlify <-> Render)
+  app.use(cors({
+    origin: true, 
+    credentials: true
+  }));
   app.use(express.json());
   app.use(helmet({ 
     contentSecurityPolicy: false,

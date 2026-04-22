@@ -18,7 +18,8 @@ const Register: React.FC = () => {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/register', {
+      const API_BASE = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${API_BASE}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, fullName }),
