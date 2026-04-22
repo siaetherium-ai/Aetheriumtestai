@@ -6,17 +6,15 @@ export default function OnboardingVideo() {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    const hasSeenVideo = localStorage.getItem('aetherium_onboarding_seen');
+    const hasSeenVideo = localStorage.getItem('aetherium_onboarding_v2');
     if (!hasSeenVideo) {
-      // Pequeño delay para que la interfaz cargue primero
-      const timer = setTimeout(() => setIsOpen(true), 1500);
-      return () => clearTimeout(timer);
+      setIsOpen(true);
     }
   }, []);
 
   const handleClose = () => {
     setIsOpen(false);
-    localStorage.setItem('aetherium_onboarding_seen', 'true');
+    localStorage.setItem('aetherium_onboarding_v2', 'true');
   };
 
   return (
