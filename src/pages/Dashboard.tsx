@@ -50,18 +50,18 @@ export default function Dashboard({ apiFetch, onNavigate }: { apiFetch: any, onN
   return (
     <motion.div {...SLAM_IN} className="space-y-8 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-4xl font-black tracking-tight text-white">Global Command Center</h1>
-          <p className="text-slate-400 mt-2">Visión 360 del ecosistema corporativo y cumplimiento fiscal.</p>
+        <div className="text-center md:text-left">
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white">Global Command Center</h1>
+          <p className="text-slate-400 mt-2 text-sm md:text-base">Visión 360 del ecosistema corporativo y cumplimiento fiscal.</p>
         </div>
-        <div className="flex gap-3">
-          <button onClick={() => onNavigate('companies')} className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-2xl font-bold text-xs transition-all shadow-xl shadow-indigo-600/30 flex items-center gap-2">
+        <div className="flex justify-center md:justify-end gap-3">
+          <button onClick={() => onNavigate('companies')} className="w-full md:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-2xl font-bold text-xs transition-all shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2">
             <Plus size={16} /> Nueva Entidad
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <StatCard title="Entidades Activas" value={stats.totalCompanies.toString()} icon={<Building2 size={20} />} trend="+2" />
         <StatCard title="Revenue Agregado" value={`RD$ ${(stats.totalRevenue/1000000).toFixed(1)}M`} icon={<DollarSign size={20} />} trend="+12%" />
         <StatCard title="Salud Fiscal Promedio" value={`${stats.avgHealth}%`} icon={<Activity size={20} />} color={stats.avgHealth > 80 ? 'emerald' : 'amber'} />
@@ -69,18 +69,18 @@ export default function Dashboard({ apiFetch, onNavigate }: { apiFetch: any, onN
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 glass-card p-8 min-h-[400px]">
-          <div className="flex items-center justify-between mb-8">
-            <div>
+        <div className="lg:col-span-2 glass-card p-4 md:p-8 min-h-[350px] md:min-h-[400px]">
+          <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
+            <div className="text-center md:text-left">
               <h3 className="font-bold text-lg">Proyección de Ingresos & Impuestos</h3>
-              <p className="text-xs text-slate-500 font-medium">Histórico acumulado de los últimos 6 meses</p>
+              <p className="text-[10px] md:text-xs text-slate-500 font-medium">Histórico acumulado de los últimos 6 meses</p>
             </div>
-            <select className="bg-slate-900 border border-white/5 rounded-xl px-4 py-2 text-xs font-bold text-slate-400">
+            <select className="w-full md:w-auto bg-slate-900 border border-white/5 rounded-xl px-4 py-2 text-xs font-bold text-slate-400">
               <option>Últimos 6 meses</option>
               <option>Año Actual</option>
             </select>
           </div>
-          <div className="h-[300px]">
+          <div className="h-[250px] md:h-[300px]">
              <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={stats.revenueHistory || []}>
                   <defs>

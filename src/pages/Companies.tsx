@@ -28,6 +28,14 @@ export default function Companies({ apiFetch, onSelect }: { apiFetch: any, onSel
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [rncResults, setRncResults] = useState<any[]>([]);
+  const [isSearchingRNC, setIsSearchingRNC] = useState(false);
+  const [newCompanyData, setNewCompanyData] = useState({
+    name: '',
+    rnc: '',
+    taxType: 'Normal',
+    sector: ''
+  });
 
   const fetchCompanies = async () => {
     setIsLoading(true);
@@ -178,12 +186,14 @@ export default function Companies({ apiFetch, onSelect }: { apiFetch: any, onSel
               
               <form onSubmit={async (e) => {
                 e.preventDefault();
-                const formData = new FormData(e.currentTarget as HTMLFormElement);
-                const data = Object.fromEntries(formData.entries());
                 try {
-                  const res = await apiFetch('/api/companies', { method: 'POST', body: JSON.stringify(data) });
+                  const res = await apiFetch('/api/companies', { 
+                    method: 'POST', 
+                    body: JSON.stringify(newCompanyData) 
+                  });
                   if (res.ok) {
                     setShowAddModal(false);
+                    setNewCompanyData({ name: '', rnc: '', taxType: 'Normal', sector: '' });
                     fetchCompanies();
                   } else {
                     const err = await res.json();
@@ -199,48 +209,95 @@ export default function Companies({ apiFetch, onSelect }: { apiFetch: any, onSel
                     <input 
                       autoFocus
                       className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 pl-10 text-sm focus:ring-1 focus:ring-indigo-500 outline-none"
-                      placeholder="Empieza a escribir..."
+                      placeholder="Escribe el nombre o RNC..."
                       onChange={async (e) => {
                         const val = e.target.value;
                         if (val.length >= 3) {
-                          const res = await apiFetch(`/api/rnc/search?query=${val}`);
-                          const data = await res.json();
-                          (window as any).rncResults = data;
-                          // Force a small re-render to show results (using a hacky way since we are inside a form)
-                          const resultsDiv = document.getElementById('rnc-results');
-                          if (resultsDiv) {
-                            resultsDiv.innerHTML = data.map((item: any) => `
-                              <button type="button" class="w-full text-left p-3 hover:bg-indigo-600/20 border-b border-white/5 transition-colors group" onclick="window.selectRNC('${item.rnc}', '${item.name}', '${item.paymentRegime}', '${item.activity}')">
-                                <div class="flex justify-between items-center">
-                                  <span class="font-bold text-white">${item.name}</span>
-                                  <span class="font-mono text-xs text-indigo-400">${item.rnc}</span>
-                                </div>
-                                <div class="text-[9px] text-slate-500 uppercase mt-1">${item.activity || 'Sin Actividad'}</div>
-                              </button>
-                            `).join('');
-                          }
+                          setIsSearchingRNC(true);
+                          try {
+                            const res = await apiFetch(`/api/rnc/search?query=${val}`);
+                            const data = await res.json();
+                            setRncResults(data);
+                          } catch (err) { console.error(err); }
+                          setIsSearchingRNC(false);
+                        } else {
+                          setRncResults([]);
                         }
                       }}
                     />
+                    {isSearchingRNC && <div className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-indigo-500"><Activity size={14} /></div>}
                   </div>
-                  <div id="rnc-results" className="absolute top-full left-0 right-0 z-50 bg-slate-900 border border-white/10 rounded-xl mt-2 max-h-48 overflow-y-auto shadow-2xl empty:hidden"></div>
+                  
+                  {/* Resultados de Búsqueda Reactivos */}
+                  <AnimatePresence>
+                    {rncResults.length > 0 && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute top-full left-0 right-0 z-50 bg-[#0d1117] border border-white/10 rounded-xl mt-2 max-h-60 overflow-y-auto shadow-2xl"
+                      >
+                        {rncResults.map((item: any) => (
+                          <button 
+                            key={item.rnc}
+                            type="button" 
+                            className="w-full text-left p-4 hover:bg-indigo-600/20 border-b border-white/5 transition-colors group"
+                            onClick={() => {
+                              setNewCompanyData({
+                                name: item.name,
+                                rnc: item.rnc,
+                                taxType: item.paymentRegime || 'Normal',
+                                sector: item.activity || ''
+                              });
+                              setRncResults([]);
+                            }}
+                          >
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="font-bold text-white group-hover:text-indigo-400 transition-colors">{item.name}</span>
+                              <span className="font-mono text-xs text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded">{item.rnc}</span>
+                            </div>
+                            <div className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">{item.activity || 'Sin Actividad Clasificada'}</div>
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 <div className="h-px bg-white/5 my-4" />
 
                 <div>
                   <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-1.5 block">Nombre Comercial / Razón Social</label>
-                  <input id="form-name" name="name" required className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-3 text-sm focus:ring-1 focus:ring-indigo-500 outline-none" placeholder="Aetherium Tech SRL" />
+                  <input 
+                    name="name" 
+                    required 
+                    value={newCompanyData.name}
+                    onChange={(e) => setNewCompanyData({ ...newCompanyData, name: e.target.value })}
+                    className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-3 text-sm focus:ring-1 focus:ring-indigo-500 outline-none" 
+                    placeholder="Aetherium Tech SRL" 
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-1.5 block">RNC</label>
-                    <input id="form-rnc" name="rnc" required className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-3 text-sm focus:ring-1 focus:ring-indigo-500 outline-none font-mono" placeholder="130123456" />
+                    <input 
+                      name="rnc" 
+                      required 
+                      value={newCompanyData.rnc}
+                      onChange={(e) => setNewCompanyData({ ...newCompanyData, rnc: e.target.value })}
+                      className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-3 text-sm focus:ring-1 focus:ring-indigo-500 outline-none font-mono" 
+                      placeholder="130123456" 
+                    />
                   </div>
                   <div>
                     <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-1.5 block">Régimen</label>
-                    <select id="form-regime" name="taxType" className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-3 text-sm focus:ring-1 focus:ring-indigo-500 outline-none">
+                    <select 
+                      name="taxType" 
+                      value={newCompanyData.taxType}
+                      onChange={(e) => setNewCompanyData({ ...newCompanyData, taxType: e.target.value })}
+                      className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-3 text-sm focus:ring-1 focus:ring-indigo-500 outline-none"
+                    >
                        <option value="Normal">Normal</option>
                        <option value="RST">RST</option>
                        <option value="Exento">Exento</option>
@@ -250,7 +307,13 @@ export default function Companies({ apiFetch, onSelect }: { apiFetch: any, onSel
 
                 <div>
                   <label className="text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-1.5 block">Sector / Actividad</label>
-                  <input id="form-sector" name="sector" className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-3 text-sm focus:ring-1 focus:ring-indigo-500 outline-none" placeholder="Servicios" />
+                  <input 
+                    name="sector" 
+                    value={newCompanyData.sector}
+                    onChange={(e) => setNewCompanyData({ ...newCompanyData, sector: e.target.value })}
+                    className="w-full bg-slate-950/50 border border-white/10 rounded-xl p-3 text-sm focus:ring-1 focus:ring-indigo-500 outline-none" 
+                    placeholder="Servicios" 
+                  />
                 </div>
 
                 <div className="pt-6">
@@ -260,16 +323,6 @@ export default function Companies({ apiFetch, onSelect }: { apiFetch: any, onSel
                 </div>
               </form>
 
-              {/* Injected helper for the hacky autocomplete */}
-              <script dangerouslySetInnerHTML={{ __html: `
-                window.selectRNC = (rnc, name, regime, sector) => {
-                  document.getElementById('form-rnc').value = rnc;
-                  document.getElementById('form-name').value = name;
-                  document.getElementById('form-sector').value = sector || '';
-                  if (regime) document.getElementById('form-regime').value = regime;
-                  document.getElementById('rnc-results').innerHTML = '';
-                }
-              `}} />
             </motion.div>
           </div>
         )}
