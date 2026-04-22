@@ -1,0 +1,1 @@
+❌ Error: permission denied for schema public

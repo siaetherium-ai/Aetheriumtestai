@@ -1,0 +1,9 @@
+{
+  "name": "Aetherium Sovereign OS",
+  "description": "El sistema operativo definitivo para empresas dominicanas. Automatización fiscal (606, 607, IT-1), consultoría legal con IA experta en leyes de RD y alertas inteligentes de la DGII.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}

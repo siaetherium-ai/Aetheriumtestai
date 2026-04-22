@@ -1,0 +1,507 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id               String         @id @db.Uuid
+  email            String         @unique
+  passwordHash     String?        @map("password_hash")
+  fullName         String?        @map("fullname")
+  role             String?        @default("Free")
+  isApproved       Boolean?       @default(false) @map("isapproved")
+  lastLoginAt      DateTime?      @map("last_login_at") @db.Timestamptz(6)
+  premiumUntil     DateTime?      @map("premium_until") @db.Timestamptz(6)
+  sessionStartedAt DateTime?      @map("session_started_at") @db.Timestamptz(6)
+  createdAt        DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
+  auditLogs        AuditLog[]
+  companyUsers     CompanyUser[]
+  conversations    Conversation[]
+  notifications    Notification[]
+
+  @@map("users")
+}
+
+model Company {
+  id               String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  rnc              String             @unique
+  name             String
+  taxType          String?            @default("Normal") @map("taxtype")
+  sector           String?
+  taxHealth        Float?             @default(100) @map("taxhealth")
+  countryCode      String?            @default("DO") @map("countrycode")
+  createdAt        DateTime?          @default(now()) @map("created_at") @db.Timestamptz(6)
+  status           String?            @default("ACTIVO")
+  employeeCount    Int?               @default(1) @map("employeecount")
+  address          String?
+  phone            String?
+  email            String?
+  paymentRegime    String?            @map("paymentregime")
+  auditLogs        AuditLog[]
+  companyUsers     CompanyUser[]
+  conversations    Conversation[]
+  auditResults     CrossAuditResult[]
+  dgiiReports      DgiiReport[]
+  documents        Document[]         @relation("CompanyToDocument")
+  electronicStamps ElectronicStamp[]
+  employees        Employee[]
+  financialMetrics FinancialMetric[]
+  fiscalInvoices   FiscalInvoice[]
+  fiscalPurchases  FiscalPurchase[]
+  knowledgeSources KnowledgeSource[]
+  legalDocuments   LegalDocument[]
+  legalTemplates   LegalTemplate[]
+  ncfSequences     NcfSequence[]
+  payrollRecords   PayrollRecord[]
+  predictiveAlerts PredictiveAlert[]
+  scrapingSources  ScrapingSource[]
+  taxObligations   TaxObligation[]
+  taxProjections   TaxProjection[]
+  voiceProfiles    VoiceProfile[]
+
+  @@map("companies")
+}
+
+model CompanyUser {
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId String?   @map("company_id") @db.Uuid
+  userId    String?   @map("user_id") @db.Uuid
+  role      String?   @default("Member")
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  company   Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([companyId, userId])
+  @@map("company_users")
+}
+
+model TaxObligation {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId   String?  @map("company_id") @db.Uuid
+  description String
+  dueDate     DateTime @map("duedate") @db.Timestamptz(6)
+  status      String?  @default("Pending")
+  type        String?
+  company     Company? @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("tax_obligations")
+}
+
+model DgiiReport {
+  id          String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId   String?      @map("company_id") @db.Uuid
+  reportType  String       @map("reporttype")
+  period      String
+  status      String?      @default("Draft")
+  summaryJson Json?        @map("summaryjson")
+  fullData    Json?        @map("fulldata")
+  createdAt   DateTime?    @default(now()) @map("created_at") @db.Timestamptz(6)
+  company     Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  reportFiles ReportFile[] @relation("DgiiReportToReportFile")
+
+  @@map("dgii_reports")
+}
+
+model FinancialMetric {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId   String?  @map("company_id") @db.Uuid
+  month       String
+  revenue     Float?   @default(0)
+  expenses    Float?   @default(0)
+  taxEstimate Float?   @default(0) @map("taxestimate")
+  healthScore Float?   @default(0) @map("healthscore")
+  company     Company? @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("financial_metrics")
+}
+
+model KnowledgeSource {
+  id              String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId       String?          @map("company_id") @db.Uuid
+  type            String
+  content         String?
+  storagePath     String?          @map("storagepath")
+  trustScore      Float?           @default(1.0) @map("trustscore")
+  createdAt       DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
+  knowledgeChunks KnowledgeChunk[]
+  company         Company?         @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("knowledge_sources")
+}
+
+model KnowledgeChunk {
+  id              String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  sourceId        String?                @map("sourceid") @db.Uuid
+  content         String
+  embedding       Unsupported("vector")?
+  knowledgeSource KnowledgeSource?       @relation(fields: [sourceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("knowledge_chunks")
+}
+
+model ReportFile {
+  id          String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  reportId    String?     @map("report_id") @db.Uuid
+  fileName    String      @map("filename")
+  storagePath String      @map("storagepath")
+  fileType    String?     @map("filetype")
+  createdAt   DateTime?   @default(now()) @map("created_at") @db.Timestamptz(6)
+  dgiiReport  DgiiReport? @relation("DgiiReportToReportFile", fields: [reportId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("report_files")
+}
+
+model VoiceProfile {
+  id                   String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId            String?               @map("company_id") @db.Uuid
+  name                 String
+  modelId              String?               @map("modelid")
+  company              Company?              @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  voiceTrainingSamples VoiceTrainingSample[]
+
+  @@map("voice_profiles")
+}
+
+model VoiceTrainingSample {
+  id              String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  profileId       String?       @map("profile_id") @db.Uuid
+  storagePath     String        @map("storagepath")
+  durationSeconds Int?          @map("durationseconds")
+  voiceProfile    VoiceProfile? @relation(fields: [profileId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("voice_training_samples")
+}
+
+model ScrapingSource {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId String?  @map("company_id") @db.Uuid
+  url       String
+  frequency String?  @default("daily")
+  isActive  Boolean? @default(true) @map("isactive")
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("scraping_sources")
+}
+
+model PredictiveAlert {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId String?  @map("company_id") @db.Uuid
+  type      String
+  title     String
+  severity  String?  @default("medium")
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("predictive_alerts")
+}
+
+model RncRegistry {
+  rnc           String  @id
+  name          String  @map("RAZON SOCIAL")
+  status        String?
+  activity      String?
+  paymentRegime String? @map("paymentregime")
+
+  @@map("rnc_registry")
+}
+
+model LegalTemplate {
+  id        String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId String?         @map("company_id") @db.Uuid
+  name      String
+  content   String
+  isGlobal  Boolean?        @default(false) @map("isglobal")
+  documents LegalDocument[]
+  company   Company?        @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("legal_templates")
+}
+
+model AuditLog {
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId    String?   @map("userid") @db.Uuid
+  companyId String?   @map("companyid") @db.Uuid
+  action    String
+  details   Json?
+  createdAt DateTime? @default(now()) @map("createdat") @db.Timestamptz(6)
+  company   Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("audit_logs")
+}
+
+model Conversation {
+  id        String                @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId String?               @map("company_id") @db.Uuid
+  userId    String?               @map("user_id") @db.Uuid
+  topic     String?
+  createdAt DateTime?             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime?             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  messages  ConversationMessage[]
+  company   Company?              @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user      User?                 @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("conversations")
+}
+
+model ConversationMessage {
+  id             String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  conversationId String?       @map("conversation_id") @db.Uuid
+  role           String
+  content        String
+  audioPath      String?       @map("audio_path")
+  createdAt      DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("conversation_messages")
+}
+
+model FiscalInvoice {
+  id                String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId         String?   @map("company_id") @db.Uuid
+  customerRnc       String    @map("customer_rnc")
+  customerName      String?   @map("customer_name")
+  ncf               String
+  ncfModified       String?   @map("ncf_modified")
+  invoiceType       String    @map("invoice_type")
+  issueDate         DateTime  @map("issue_date") @db.Timestamptz(6)
+  amount            Float
+  itbis             Float     @default(0)
+  itbisRetained     Float     @default(0) @map("itbis_retained")
+  incomeTaxRetained Float     @default(0) @map("income_tax_retained")
+  status            String?   @default("Valid")
+  createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  company           Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("fiscal_invoices")
+}
+
+model FiscalPurchase {
+  id                String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId         String?   @map("company_id") @db.Uuid
+  supplierRnc       String    @map("supplier_rnc")
+  supplierName      String?   @map("supplier_name")
+  ncf               String
+  ncfModified       String?   @map("ncf_modified")
+  purchaseType      String    @map("purchase_type")
+  issueDate         DateTime  @map("issue_date") @db.Timestamptz(6)
+  paymentDate       DateTime? @map("payment_date") @db.Timestamptz(6)
+  amount            Float
+  itbis             Float     @default(0)
+  itbisRetained     Float     @default(0) @map("itbis_retained")
+  incomeTaxRetained Float     @default(0) @map("income_tax_retained")
+  paymentMethod     String    @map("payment_method")
+  createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  company           Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("fiscal_purchases")
+}
+
+model NcfSequence {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId  String?   @map("company_id") @db.Uuid
+  type       String
+  prefix     String
+  current    Int       @default(1)
+  limit      Int
+  expiryDate DateTime? @map("expiry_date") @db.Timestamptz(6)
+  isActive   Boolean   @default(true) @map("is_active")
+  company    Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("ncf_sequences")
+}
+
+model LegalDocument {
+  id         String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId  String?        @map("company_id") @db.Uuid
+  templateId String?        @map("template_id") @db.Uuid
+  title      String
+  content    String
+  status     String?        @default("Draft")
+  createdAt  DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
+  company    Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  template   LegalTemplate? @relation(fields: [templateId], references: [id], onUpdate: NoAction)
+
+  @@map("legal_documents")
+}
+
+model SystemSetting {
+  id                   String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  aiModel              String?  @default("gemini-1.5-flash") @map("ai_model")
+  language             String?  @default("es")
+  notificationsEnabled Boolean? @default(true) @map("notifications_enabled")
+  aiVoiceEnabled       Boolean? @default(true) @map("ai_voice_enabled")
+  elevenLabsApiKey     String?  @map("elevenlabs_api_key")
+  elevenLabsVoiceId    String?  @default("21m00Tcm4TlvDq8ikWAM") @map("elevenlabs_voice_id")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
+
+model TrainingLog {
+  id       String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  type     String
+  content  String
+  date     DateTime @default(now()) @db.Timestamptz(6)
+  metadata Json?
+
+  @@map("training_logs")
+}
+
+model Document {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId   String?  @map("company_id") @db.Uuid
+  title       String
+  type        String
+  content     String?
+  storagePath String?  @map("storage_path")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  company     Company? @relation("CompanyToDocument", fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
+
+model Employee {
+  id             String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId      String?         @map("company_id") @db.Uuid
+  fullName       String          @map("full_name")
+  rnc            String?         @map("rnc")
+  position       String?
+  salary         Float
+  hireDate       DateTime?       @default(now()) @map("hire_date") @db.Timestamptz(6)
+  sfs            Float?          @default(0)
+  afp            Float?          @default(0)
+  arl            Float?          @default(0)
+  company        Company?        @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  payrollRecords PayrollRecord[]
+
+  @@map("employees")
+}
+
+model PayrollRecord {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId   String?   @map("company_id") @db.Uuid
+  employeeId  String?   @map("employee_id") @db.Uuid
+  month       String
+  year        Int
+  grossSalary Float     @map("gross_salary")
+  sfs         Float     @default(0)
+  afp         Float     @default(0)
+  isr         Float     @default(0)
+  netSalary   Float     @map("net_salary")
+  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  company     Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  employee    Employee? @relation(fields: [employeeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("payroll_records")
+}
+
+model TaxProjection {
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId String?   @map("company_id") @db.Uuid
+  period    String
+  revenue   Float
+  expenses  Float
+  isr       Float
+  notes     String?
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  company   Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("tax_projections")
+}
+
+model DgiiRncRecord {
+  rnc                    String    @id
+  razonSocial            String    @map("razon_social")
+  actividadEconomica     String?   @map("actividad_economica")
+  fechaInicioOperaciones String?   @map("fecha_inicio_operaciones")
+  estado                 String?
+  regimenPago            String?   @map("regimen_pago")
+  createdAt              DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("dgii_rnc_records")
+}
+
+model Notification {
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  title     String
+  message   String
+  type      String    @default("info")
+  isRead    Boolean   @default(false) @map("is_read")
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model FiscalNorm {
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  title     String
+  type      String
+  content   String
+  lawNumber String?   @map("law_number")
+  issueDate DateTime? @map("issue_date") @db.Timestamptz(6)
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("fiscal_norms")
+}
+
+model ElectronicStamp {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId  String?   @map("company_id") @db.Uuid
+  certType   String    @default("FE-Persona Fisica") @map("cert_type")
+  certData   String    @map("cert_data")
+  expiryDate DateTime  @map("expiry_date") @db.Timestamptz(6)
+  isActive   Boolean   @default(true) @map("is_active")
+  createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  company    Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("electronic_stamps")
+}
+
+model CrossAuditResult {
+  id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  companyId      String?   @map("company_id") @db.Uuid
+  period         String
+  type           String
+  severity       String    @default("Low")
+  description    String
+  discrepancyAmt Float     @default(0) @map("discrepancy_amt")
+  details        Json?
+  createdAt      DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  company        Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("cross_audit_results")
+}
+
+model TrialAccess {
+  id               String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  ipAddress        String    @unique @map("ip_address")
+  firstAccess      DateTime  @default(now()) @map("first_access") @db.Timestamptz(6)
+  isBlocked        Boolean   @default(false) @map("is_blocked")
+  blockedAt        DateTime? @map("blocked_at") @db.Timestamptz(6)
+  formCompleted    Boolean   @default(false) @map("form_completed")
+  lastActive       DateTime  @default(now()) @map("last_active") @db.Timestamptz(6)
+  totalMinutesUsed Int       @default(0) @map("total_minutes_used")
+
+  @@map("trial_access")
+}
+
+model Lead {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  firstName    String    @map("first_name")
+  lastName     String    @map("last_name")
+  email        String?
+  phone        String?
+  businessName String?   @map("business_name")
+  ipAddress    String    @unique @map("ip_address")
+  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("leads")
+}

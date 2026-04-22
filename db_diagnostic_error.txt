@@ -1,0 +1,4 @@
+{
+  "message": "Can't reach database server at `db.apeevlmoooanlnmwylyi.supabase.co:5432`\n\nPlease make sure your database server is running at `db.apeevlmoooanlnmwylyi.supabase.co:5432`.",
+  "stack": "PrismaClientInitializationError: Can't reach database server at `db.apeevlmoooanlnmwylyi.supabase.co:5432`\n\nPlease make sure your database server is running at `db.apeevlmoooanlnmwylyi.supabase.co:5432`.\n    at t (C:\\Users\\mende\\Desktop\\aetherium-sovereign-os\\node_modules\\@prisma\\client\\runtime\\library.js:112:2473)\n    at async main (C:\\Users\\mende\\Desktop\\aetherium-sovereign-os\\test-db-raw.ts:9:5)"
+}
