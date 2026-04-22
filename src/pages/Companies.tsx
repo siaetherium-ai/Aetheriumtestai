@@ -34,8 +34,16 @@ export default function Companies({ apiFetch, onSelect }: { apiFetch: any, onSel
     try {
       const res = await apiFetch('/api/companies');
       const data = await res.json();
-      setCompanies(data);
-    } catch (e) { console.error(e); }
+      if (Array.isArray(data)) {
+        setCompanies(data);
+      } else {
+        console.error("Respuesta inesperada de empresas:", data);
+        setCompanies([]);
+      }
+    } catch (e) { 
+      console.error(e); 
+      setCompanies([]);
+    }
     setIsLoading(false);
   };
 
@@ -43,10 +51,10 @@ export default function Companies({ apiFetch, onSelect }: { apiFetch: any, onSel
     fetchCompanies();
   }, []);
 
-  const filteredCompanies = companies.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    c.rnc.includes(searchQuery)
-  );
+  const filteredCompanies = Array.isArray(companies) ? companies.filter(c => 
+    (c.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) || 
+    (c.rnc || '').includes(searchQuery)
+  ) : [];
 
   return (
     <motion.div {...SLAM_IN} className="space-y-8">
